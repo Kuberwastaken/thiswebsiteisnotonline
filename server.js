@@ -8,11 +8,11 @@ const path = require('path');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Import our modular API handlers
-const { handleGenerate } = require('./api/generate');
-const { handleRobots } = require('./api/robots');
-const { handleSitemap } = require('./api/sitemap');
-const { handleStats, handleStatsPage } = require('./api/stats');
+// Import our modular handlers from lib directory
+const { handleGenerate } = require('./lib/generate');
+const { handleRobots } = require('./lib/robots');
+const { handleSitemap } = require('./lib/sitemap');
+const { handleStats, handleStatsPage } = require('./lib/stats');
 const { startCacheCleanup, getCacheStats, clearCache } = require('./lib/database');
 
 // Security and CORS middleware

@@ -1,25 +1,25 @@
 {
   "functions": {
-    "api/generate.js": {
+    "api/[...path].js": {
       "maxDuration": 30
     }
   },
   "rewrites": [
     {
       "source": "/robots.txt",
-      "destination": "/api/robots"
+      "destination": "/api/robots.txt"
     },
     {
       "source": "/sitemap.xml", 
-      "destination": "/api/sitemap"
+      "destination": "/api/sitemap.xml"
     },
     {
       "source": "/stats",
       "destination": "/api/stats"
     },
     {
-      "source": "/((?!api|_next|favicon.ico|health|admin).*)",
-      "destination": "/api/generate?path=$1"
+      "source": "/((?!api|_next|favicon.ico).*)",
+      "destination": "/api/$1"
     }
   ]
 }
