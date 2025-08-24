@@ -228,54 +228,63 @@ function getThemeInstructions(theme) {
 
 // Enhanced prompt generation with true randomness
 function generatePrompt(path) {
-  // Diverse visual themes for maximum variety
-  const visualThemes = [
-    'old-school-90s-internet', 'dark-noir-detective', 'bright-clean-minimal', 'retro-neon-80s',
-    'newspaper-print-classic', 'terminal-green-hacker', 'warm-wooden-cabin', 'cold-steel-industrial',
-    'art-deco-golden', 'brutalist-concrete', 'pastel-soft-dreamy', 'bold-high-contrast',
-    'vintage-typewriter', 'modern-glass-clean', 'forest-natural-green', 'sunset-orange-warm',
-    'ocean-deep-blue', 'desert-sandy-earth', 'library-quiet-brown', 'festival-rainbow-bright',
-    'cyberpunk-neon-grid', 'steampunk-brass', 'space-dark-stars', 'garden-floral-soft'
-  ];
-  
-  const contentTypes = [
-    'comprehensive-business', 'detailed-service-catalog', 'information-encyclopedia', 'community-hub',
-    'educational-resource', 'marketplace-directory', 'professional-portfolio', 'hobby-showcase',
-    'local-guide', 'specialized-tool', 'entertainment-portal', 'research-database'
-  ];
-  
-  const layoutApproaches = [
-    'multi-column-magazine', 'dashboard-panels', 'timeline-scrolling', 'grid-card-system',
-    'sidebar-navigation', 'tabbed-sections', 'accordion-expandable', 'single-page-scroll',
-    'split-screen-dual', 'masonry-pinterest', 'table-data-driven', 'forum-discussion'
-  ];
-  
-  const randomTheme = visualThemes[Math.floor(Math.random() * visualThemes.length)];
-  const randomContent = contentTypes[Math.floor(Math.random() * contentTypes.length)];
-  const randomLayout = layoutApproaches[Math.floor(Math.random() * layoutApproaches.length)];
-  
-  // Get specific styling based on theme
-  const themeStyles = getThemeInstructions(randomTheme);
-  
-  return `Create a comprehensive, content-rich HTML website for "${path}". Make it a ${randomContent} with ${randomTheme} visual styling using ${randomLayout} layout.
+  return `CREATE A COMPLETE HTML WEBSITE FOR "${path}" - NO EXPLANATIONS, JUST CODE.
 
-🎯 CONTENT REQUIREMENTS - MAKE IT LARGE:
-- Create a SUBSTANTIAL website with 6-8 distinct sections minimum
-- Each section should have 3-5 paragraphs of detailed, realistic content
-- Include: Hero/Welcome, About, Services/Products, Features, Testimonials/Reviews, FAQ, Contact, and additional relevant sections
-- Add specific details, pricing, testimonials, feature lists, contact info, business hours, etc.
-- Make it feel like an established business with years of content and history
-- Include realistic data: phone numbers, addresses, specific services, prices, etc.
+CONCEPT INTERPRETATION: 
+Analyze "${path}" and create a website that perfectly matches what this concept should be:
+- Is it a business, hobby site, meme, service, entertainment, art project, etc.?
+- What audience would visit this? (professionals, kids, gamers, general public, etc.)
+- What era/style fits? (90s personal site, modern startup, retro gaming, corporate, fun/quirky, etc.)
+- Match the design and content to what makes sense for this specific concept
 
-🎨 VISUAL THEME - ${randomTheme}:
-${themeStyles}
+🚫 CRITICAL REQUIREMENTS:
+- RETURN ONLY HTML CODE - no explanations, questions, or markdown
+- Always generate the complete website immediately  
+- Never ask permission or describe what you'll make
+- Start immediately with <!DOCTYPE html>
+
+🎯 CONTENT & DESIGN MATCHING:
+
+FOR PROFESSIONAL/BUSINESS CONCEPTS (law firms, medical, consulting, etc.):
+- Clean, professional layouts with structured sections
+- Conservative color schemes (blues, grays, whites) but still polished
+- Comprehensive content: services, pricing, testimonials, FAQ, contact info
+- 6-8 sections with detailed business information
+- Make it feel established and trustworthy
+
+FOR FUN/CREATIVE/MEME CONCEPTS (hobbies, entertainment, quirky ideas):
+- Bold, creative designs with personality
+- Bright colors, gradients, fun fonts, creative layouts
+- Interactive elements, games, or unique features
+- 3-5 highly engaging sections focused on entertainment
+- Embrace the weird and wonderful - make it memorable!
+
+FOR NICHE/SPECIALTY CONCEPTS:
+- Theme heavily around the specific topic
+- Use appropriate visual language for that niche
+- Include authentic terminology and passionate details
+- Make it feel like it was created by a true enthusiast
+
+🚫 NO GENERIC WEBSITES:
+- NEVER use boring white backgrounds with plain black text
+- Every site needs strong visual personality matching its concept
+- Fun sites: Use bold themes (neon, retro, cyberpunk, rainbow, space, gaming aesthetics)
+- Professional sites: Sophisticated but distinctive styling that stands out
+- Match colors, fonts, and layout to the concept's natural personality
+
+🔗 NAVIGATION & LINKING:
+- Include multiple buttons and links throughout the site
+- Link to related sub-pages like "${path}/about", "${path}/contact", "${path}/help", "${path}/services"
+- Add creative cross-links to completely different concepts like "/unicorns", "/mystery", "/adventure", "/pizza"
+- Make navigation feel like a real interconnected website with many pages to explore
+- Include "Random Page" buttons that link to unexpected concepts
 
 📐 LAYOUT & STRUCTURE:
-- Use ${randomLayout} approach for content organization
-- Create proper navigation with 6+ menu items
-- Include a substantial hero section, multiple content sections, and detailed footer
-- Make each section visually distinct but maintain visual cohesion
-- Add plenty of content - aim for a full, realistic business website
+- Choose layout that best fits the concept (don't force sidebars on fun sites!)
+- Professional sites: Structured navigation, clear sections, organized content
+- Creative sites: Flexible layouts, creative navigation, unique organization
+- Include appropriate navigation and sections for the type of site
+- Make the layout serve the content and concept, not the other way around
 
 ⚡ INTERACTIVE FEATURES:
 - Add smooth hover effects, transitions, and animations
@@ -321,11 +330,11 @@ function postProcessContent(content) {
     }
   }
   
-  // Replace all instances of 2023 with 2025
-  const yearMatches = cleanedContent.match(/2023/g);
+  // Replace all instances of 2024 with 2025
+  const yearMatches = cleanedContent.match(/2024/g);
   if (yearMatches) {
-    console.log(`Replacing ${yearMatches.length} instances of 2023 with 2025`);
-    cleanedContent = cleanedContent.replace(/2023/g, '2025');
+    console.log(`Replacing ${yearMatches.length} instances of 2024 with 2025`);
+    cleanedContent = cleanedContent.replace(/2024/g, '2025');
   }
   
   // Trim any extra whitespace
@@ -386,7 +395,7 @@ async function generateWebsiteContent(path) {
     console.log(`🤖 Generating new website for: /${path}`);
     
     const response = await axios.post(ANTHROPIC_API_URL, {
-      model: 'claude-3-5-haiku-20241022',
+      model: 'claude-3-5-haiku-20241022', 
       max_tokens: 2500,
       temperature: 0.9,
       messages: [
