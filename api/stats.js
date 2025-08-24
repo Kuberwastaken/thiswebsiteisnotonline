@@ -1,6 +1,6 @@
-import { supabase } from '../lib/supabase.js';
+const { supabase } = require('../lib/supabase.js');
 
-export default async function handler(req, res) {
+module.exports = async function handler(req, res) {
   try {
     // Get popular websites
     const { data: popular } = await supabase

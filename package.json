@@ -16,9 +16,12 @@
   ],
   "author": "Kuber Mehta",
   "license": "MIT",
+  "engines": {
+    "node": ">=18.0.0"
+  },
   "dependencies": {
     "@supabase/supabase-js": "^2.56.0",
-    "axios": "^1.6.0",
+    "axios": "^1.7.2",
     "cors": "^2.8.5",
     "dotenv": "^16.6.1",
     "express": "^4.18.2",

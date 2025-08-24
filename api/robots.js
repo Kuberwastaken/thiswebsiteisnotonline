@@ -1,6 +1,6 @@
-import { supabase } from '../lib/supabase.js';
+const { supabase } = require('../lib/supabase.js');
 
-export default async function handler(req, res) {
+module.exports = async function handler(req, res) {
   try {
     // Get all website paths from database
     const { data: websites, error } = await supabase

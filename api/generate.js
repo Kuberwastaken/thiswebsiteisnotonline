@@ -1,8 +1,8 @@
-import { supabase, extractTitle, extractDescription } from '../lib/supabase.js';
-import { generateWebsiteContent } from '../lib/aiGeneration.js';
-import { postProcessContent } from '../lib/postProcessing.js';
+const { supabase, extractTitle, extractDescription } = require('../lib/supabase.js');
+const { generateWebsiteContent } = require('../lib/aiGeneration.js');
+const { postProcessContent } = require('../lib/postProcessing.js');
 
-export default async function handler(req, res) {
+module.exports = async function handler(req, res) {
   const path = req.query.path || '';
   
   // Skip common browser requests and admin routes
