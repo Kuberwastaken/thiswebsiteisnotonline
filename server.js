@@ -3,6 +3,7 @@ const express = require('express');
 const axios = require('axios');
 const cors = require('cors');
 const helmet = require('helmet');
+const rateLimit = require('express-rate-limit');
 const path = require('path');
 const crypto = require('crypto');
 const { createClient } = require('@supabase/supabase-js');
@@ -17,6 +18,73 @@ app.use(helmet({
 app.use(cors());
 app.use(express.json());
 app.use(express.static('public'));
+
+// Rate limiting middleware
+const generalLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100, // Limit each IP to 100 requests per windowMs
+  message: {
+    error: 'Too many requests from this IP, please try again later.',
+    retryAfter: '15 minutes'
+  },
+  standardHeaders: true, // Return rate limit info in headers
+  legacyHeaders: false,
+});
+
+const strictLimiter = rateLimit({
+  windowMs: 5 * 60 * 1000, // 5 minutes
+  max: 5, // Limit each IP to 5 website generations per 5 minutes
+  message: {
+    error: 'Too many website generations from this IP. Please wait 5 minutes before creating more websites.',
+    retryAfter: '5 minutes',
+    tip: 'This limit helps us maintain quality service for everyone!'
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+  skipSuccessfulRequests: false, // Count all requests, even successful ones
+  handler: (req, res) => {
+    res.status(429).json({
+      error: 'Too many website generations from this IP. Please wait 5 minutes before creating more websites.',
+      retryAfter: '5 minutes',
+      tip: 'This limit helps us maintain quality service for everyone!',
+      rateLimitInfo: {
+        current: req.rateLimit.current,
+        limit: req.rateLimit.limit,
+        remaining: req.rateLimit.remaining,
+        resetTime: new Date(Date.now() + req.rateLimit.resetTime)
+      }
+    });
+  }
+});
+
+const assetLimiter = rateLimit({
+  windowMs: 1 * 60 * 1000, // 1 minute
+  max: 50, // Allow more requests for static assets
+  message: {
+    error: 'Too many asset requests, please slow down.',
+    retryAfter: '1 minute'
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+// Apply general rate limiting to all requests
+app.use(generalLimiter);
+
+// Apply asset-specific rate limiting to static files
+app.use('/assets', assetLimiter);
+
+// Lenient rate limiter for utility endpoints
+const utilityLimiter = rateLimit({
+  windowMs: 2 * 60 * 1000, // 2 minutes
+  max: 20, // Allow 20 requests per 2 minutes for utility endpoints
+  message: {
+    error: 'Too many requests to utility endpoints.',
+    retryAfter: '2 minutes'
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
 
 // Anthropic Claude API configuration
 const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
@@ -578,7 +646,7 @@ app.get('/', (req, res) => {
 });
 
 // Dynamic robots.txt
-app.get('/robots.txt', async (req, res) => {
+app.get('/robots.txt', utilityLimiter, async (req, res) => {
   let robotsContent = `User-agent: *
 Allow: /
 
@@ -622,7 +690,7 @@ Sitemap: https://thiswebsiteisnot.online/sitemap.xml
 });
 
 // Dynamic sitemap.xml route
-app.get('/sitemap.xml', async (req, res) => {
+app.get('/sitemap.xml', utilityLimiter, async (req, res) => {
   try {
     // Get all websites from database with metadata
     let websites = [];
@@ -703,7 +771,7 @@ app.get('/sitemap.xml', async (req, res) => {
 });
 
 // Health check with more info
-app.get('/health', (req, res) => {
+app.get('/health', utilityLimiter, (req, res) => {
   res.json({ 
     status: 'healthy', 
     message: 'thiswebsiteisnot.online is running!',
@@ -719,7 +787,8 @@ app.get('/admin/clear-cache', (req, res) => {
 });
 
 // Catch-all route for dynamic page generation
-app.get('*', async (req, res) => {
+// Apply strict rate limiting to website generation
+app.get('*', strictLimiter, async (req, res) => {
   const urlPath = req.path.slice(1);
   
   // Skip common browser requests and admin routes
