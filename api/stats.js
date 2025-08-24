@@ -1,315 +1,174 @@
-const { supabase } = require('../lib/supabase.js');
+const { createClient } = require('@supabase/supabase-js');
 
-module.exports = async function handler(req, res) {
+// Initialize Supabase if credentials are available
+let supabase = null;
+if (process.env.SUPABASE_URL && process.env.SUPABASE_ANON_KEY) {
+  supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_ANON_KEY);
+}
+
+async function getStats() {
+  if (!supabase) {
+    return {
+      error: 'Database not configured',
+      stats: {
+        totalWebsites: 0,
+        totalViews: 0,
+        popularPaths: [],
+        recentWebsites: []
+      }
+    };
+  }
+
   try {
-    // Get popular websites
-    const { data: popular } = await supabase
-      .from('websites')
-      .select('path, title, view_count, created_at')
-      .order('view_count', { ascending: false })
-      .limit(10);
-
-    // Get recent websites
-    const { data: recent } = await supabase
-      .from('websites')
-      .select('path, title, created_at')
-      .order('created_at', { ascending: false })
-      .limit(10);
-
-    // Get total stats
-    const { count: totalWebsites } = await supabase
-      .from('websites')
-      .select('*', { count: 'exact', head: true });
-
-    const { data: totalViews } = await supabase
+    // Get total websites and views
+    const { data: totals, error: totalsError } = await supabase
       .from('websites')
       .select('view_count');
 
-    const totalViewCount = totalViews?.reduce((sum, site) => sum + (site.view_count || 0), 0) || 0;
+    if (totalsError) throw totalsError;
 
-    // Generate minimal monochrome stats page matching the index design
-    const statsPage = `<!DOCTYPE html>
+    const totalWebsites = totals.length;
+    const totalViews = totals.reduce((sum, site) => sum + (site.view_count || 0), 0);
+
+    // Get popular paths
+    const { data: popular, error: popularError } = await supabase
+      .from('websites')
+      .select('path, view_count, title')
+      .order('view_count', { ascending: false })
+      .limit(10);
+
+    if (popularError) throw popularError;
+
+    // Get recent websites
+    const { data: recent, error: recentError } = await supabase
+      .from('websites')
+      .select('path, created_at, title, view_count')
+      .order('created_at', { ascending: false })
+      .limit(10);
+
+    if (recentError) throw recentError;
+
+    return {
+      stats: {
+        totalWebsites,
+        totalViews,
+        popularPaths: popular || [],
+        recentWebsites: recent || []
+      }
+    };
+  } catch (error) {
+    console.error('Stats error:', error);
+    return {
+      error: error.message,
+      stats: {
+        totalWebsites: 0,
+        totalViews: 0,
+        popularPaths: [],
+        recentWebsites: []
+      }
+    };
+  }
+}
+
+async function handleStats(req, res) {
+  try {
+    const result = await getStats();
+    res.json(result);
+  } catch (error) {
+    console.error('Stats API error:', error);
+    res.status(500).json({ error: 'Failed to fetch stats' });
+  }
+}
+
+function generateStatsPage(stats) {
+  return `
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>stats</title>
-    
-    <!-- Favicons and App Icons -->
-    <link rel="icon" href="/assets/favicon.ico" sizes="any">
-    <link rel="icon" href="/assets/favicon.svg" type="image/svg+xml">
-    <link rel="apple-touch-icon" href="/assets/apple-touch-icon.png">
-    <link rel="icon" href="/assets/favicon-96x96.png" sizes="96x96" type="image/png">
-    <link rel="manifest" href="/assets/site.webmanifest">
-    
-    <!-- SEO Meta Tags -->
-    <meta name="description" content="Statistics for AI-generated websites on ThisWebsiteIsNot.Online">
-    <meta name="keywords" content="website statistics, analytics, AI generated websites">
-    <meta name="author" content="Kuber Mehta">
-    <meta name="robots" content="index, follow">
-    
-    <!-- Umami Analytics -->
-    <script defer src="https://cloud.umami.is/script.js" data-website-id="10096734-4b52-416d-9462-bba1d0c82206"></script>
-    
-    <meta name="theme-color" content="#000000">
-    <link rel="canonical" href="https://thiswebsiteisnot.online/stats">
-    
+    <title>Stats - thiswebsiteisnot.online</title>
     <style>
-        @import url('https://rsms.me/inter/inter.css');
-        
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
         body {
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: #ffffff;
-            color: #000000;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            margin: 0;
+            padding: 40px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
             min-height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            overflow: auto;
-            padding: 2rem 1rem;
         }
-
-        .container {
-            text-align: center;
-            max-width: 800px;
-            width: 100%;
-        }
-
-        .title {
-            font-size: clamp(2rem, 8vw, 4rem);
-            font-weight: 400;
-            letter-spacing: -0.02em;
-            margin-bottom: 1rem;
-            line-height: 1.1;
-        }
-
-        .subtitle {
-            font-size: 1.1rem;
-            opacity: 0.7;
-            margin-bottom: 3rem;
-            font-weight: 400;
-        }
-
-        .stats-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-            gap: 2rem;
-            margin: 3rem 0;
-            max-width: 600px;
-            margin-left: auto;
-            margin-right: auto;
-        }
-
-        .stat-item {
-            padding: 1.5rem 1rem;
-            border: 1px solid #e0e0e0;
-            border-radius: 8px;
-            transition: all 0.2s ease;
-        }
-
-        .stat-item:hover {
-            border-color: #000000;
-            transform: translateY(-2px);
-        }
-
-        .stat-number {
-            font-size: 2rem;
-            font-weight: 600;
-            margin-bottom: 0.5rem;
-            font-variant-numeric: tabular-nums;
-        }
-
-        .stat-label {
-            font-size: 0.9rem;
-            opacity: 0.6;
-            font-weight: 400;
-        }
-
-        .section {
-            margin: 3rem 0;
-            text-align: left;
-        }
-
-        .section-title {
-            font-size: 1.3rem;
-            font-weight: 500;
-            margin-bottom: 1.5rem;
-            text-align: center;
-            opacity: 0.8;
-        }
-
-        .website-list {
-            border: 1px solid #e0e0e0;
-            border-radius: 8px;
-            overflow: hidden;
-        }
-
-        .website-item {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 1rem 1.5rem;
-            border-bottom: 1px solid #e0e0e0;
-            transition: background-color 0.2s ease;
-        }
-
-        .website-item:last-child {
-            border-bottom: none;
-        }
-
-        .website-item:hover {
-            background-color: #f8f9fa;
-        }
-
-        .website-path {
-            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
-            font-size: 0.9rem;
-            color: #000000;
-            text-decoration: none;
-            font-weight: 500;
-        }
-
-        .website-path:hover {
-            text-decoration: underline;
-        }
-
-        .website-title {
-            font-size: 0.8rem;
-            opacity: 0.6;
-            margin-top: 0.2rem;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            max-width: 300px;
-        }
-
-        .website-meta {
-            font-size: 0.8rem;
-            opacity: 0.6;
-            text-align: right;
-            font-variant-numeric: tabular-nums;
-        }
-
-        .home-button {
-            display: inline-block;
-            margin-top: 3rem;
-            padding: 0.8rem 1.5rem;
-            border: 1px solid #000000;
-            color: #000000;
-            text-decoration: none;
-            border-radius: 6px;
-            font-weight: 500;
-            transition: all 0.2s ease;
-            font-size: 0.9rem;
-        }
-
-        .home-button:hover {
-            background-color: #000000;
-            color: #ffffff;
-        }
-
-        .empty-state {
-            padding: 2rem;
-            opacity: 0.6;
-            font-style: italic;
-            text-align: center;
-        }
-
-        @media (max-width: 768px) {
-            .website-item {
-                flex-direction: column;
-                align-items: flex-start;
-                gap: 0.5rem;
-            }
-            
-            .website-meta {
-                text-align: left;
-            }
-            
-            .website-title {
-                max-width: none;
-            }
-        }
+        .container { max-width: 800px; margin: 0 auto; }
+        h1 { font-size: 3rem; margin-bottom: 2rem; text-align: center; }
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin-bottom: 40px; }
+        .stat-card { background: rgba(255,255,255,0.1); padding: 20px; border-radius: 10px; text-align: center; }
+        .stat-number { font-size: 2rem; font-weight: bold; margin-bottom: 5px; }
+        .stat-label { opacity: 0.8; }
+        .section { background: rgba(255,255,255,0.1); padding: 20px; border-radius: 10px; margin-bottom: 20px; }
+        .section h2 { margin-top: 0; }
+        .list-item { padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.1); display: flex; justify-content: between; }
+        .list-item:last-child { border-bottom: none; }
+        a { color: white; text-decoration: none; }
+        a:hover { text-decoration: underline; }
+        .views { opacity: 0.7; font-size: 0.9em; }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1 class="title">stats</h1>
-        <p class="subtitle">analytics for generated websites</p>
+        <h1>📊 Site Statistics</h1>
         
         <div class="stats-grid">
-            <div class="stat-item">
-                <div class="stat-number">${totalWebsites || 0}</div>
-                <div class="stat-label">websites</div>
+            <div class="stat-card">
+                <div class="stat-number">${stats.totalWebsites.toLocaleString()}</div>
+                <div class="stat-label">Websites Generated</div>
             </div>
-            <div class="stat-item">
-                <div class="stat-number">${totalViewCount.toLocaleString()}</div>
-                <div class="stat-label">views</div>
-            </div>
-            <div class="stat-item">
-                <div class="stat-number">∞</div>
-                <div class="stat-label">possibilities</div>
+            <div class="stat-card">
+                <div class="stat-number">${stats.totalViews.toLocaleString()}</div>
+                <div class="stat-label">Total Views</div>
             </div>
         </div>
-
-        ${popular?.length ? `
+        
+        ${stats.popularPaths.length > 0 ? `
         <div class="section">
-            <h2 class="section-title">popular</h2>
-            <div class="website-list">
-                ${popular.map(site => `
-                    <div class="website-item">
-                        <div>
-                            <a href="/${site.path}" class="website-path">/${site.path}</a>
-                            <div class="website-title">${site.title}</div>
-                        </div>
-                        <div class="website-meta">${site.view_count} views</div>
-                    </div>
-                `).join('')}
-            </div>
+            <h2>🔥 Most Popular</h2>
+            ${stats.popularPaths.map(site => `
+                <div class="list-item">
+                    <a href="/${site.path}">${site.title || site.path}</a>
+                    <span class="views">${site.view_count} views</span>
+                </div>
+            `).join('')}
         </div>
         ` : ''}
-
-        ${recent?.length ? `
+        
+        ${stats.recentWebsites.length > 0 ? `
         <div class="section">
-            <h2 class="section-title">recent</h2>
-            <div class="website-list">
-                ${recent.map(site => `
-                    <div class="website-item">
-                        <div>
-                            <a href="/${site.path}" class="website-path">/${site.path}</a>
-                            <div class="website-title">${site.title}</div>
-                        </div>
-                        <div class="website-meta">${new Date(site.created_at).toLocaleDateString()}</div>
-                    </div>
-                `).join('')}
-            </div>
+            <h2>🆕 Recently Generated</h2>
+            ${stats.recentWebsites.map(site => `
+                <div class="list-item">
+                    <a href="/${site.path}">${site.title || site.path}</a>
+                    <span class="views">${new Date(site.created_at).toLocaleDateString()}</span>
+                </div>
+            `).join('')}
         </div>
         ` : ''}
-
-        ${!popular?.length && !recent?.length ? `
-        <div class="empty-state">
-            no websites generated yet<br>
-            <a href="/" style="color: inherit;">start creating</a>
-        </div>
-        ` : ''}
-
-        <a href="/" class="home-button">← home</a>
+        
+        <p style="text-align: center; margin-top: 40px;">
+            <a href="/" style="background: rgba(255,255,255,0.2); padding: 12px 24px; border-radius: 25px;">← Back to Home</a>
+        </p>
     </div>
 </body>
 </html>`;
+}
 
+async function handleStatsPage(req, res) {
+  try {
+    const result = await getStats();
+    const html = generateStatsPage(result.stats);
     res.setHeader('Content-Type', 'text/html');
-    res.setHeader('Cache-Control', 'public, max-age=300'); // 5 minute cache
-    res.send(statsPage);
-
+    res.send(html);
   } catch (error) {
-    console.error('Error generating stats page:', error);
-    res.status(500).json({ error: 'Failed to generate stats' });
+    console.error('Stats page error:', error);
+    res.status(500).send('Error loading stats');
   }
 }
+
+module.exports = { handleStats, handleStatsPage, getStats };

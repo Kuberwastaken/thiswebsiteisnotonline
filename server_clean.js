@@ -13,7 +13,6 @@ const { handleGenerate } = require('./api/generate');
 const { handleRobots } = require('./api/robots');
 const { handleSitemap } = require('./api/sitemap');
 const { handleStats, handleStatsPage } = require('./api/stats');
-const { startCacheCleanup, getCacheStats, clearCache } = require('./lib/database');
 
 // Security and CORS middleware
 app.use(helmet({
@@ -81,23 +80,10 @@ app.get('/health', utilityLimiter, (req, res) => {
   });
 });
 
-// Admin endpoints for cache management
-app.get('/admin/cache-stats', utilityLimiter, (req, res) => {
-  const stats = getCacheStats();
-  res.json({ 
-    message: 'Cache statistics',
-    ...stats,
-    timestamp: new Date().toISOString()
-  });
-});
-
-app.get('/admin/clear-cache', utilityLimiter, (req, res) => {
-  const result = clearCache();
-  res.json({ 
-    message: 'Cache cleared successfully',
-    ...result,
-    timestamp: new Date().toISOString()
-  });
+// Admin endpoint for cache management (if needed)
+app.get('/admin/clear-cache', (req, res) => {
+  // This would clear any caches if we had them at the server level
+  res.json({ message: 'Server-level cache cleared (if any)' });
 });
 
 // Catch-all route for dynamic page generation
@@ -149,10 +135,6 @@ app.use((error, req, res, next) => {
 app.listen(PORT, () => {
   console.log(`🚀 thiswebsiteisnot.online is running on port ${PORT}`);
   console.log(`📍 Visit http://localhost:${PORT} to start exploring infinite websites!`);
-  
-  // Start cache cleanup
-  startCacheCleanup();
-  console.log(`🧹 Cache cleanup scheduled`);
 });
 
 // Graceful shutdown
