@@ -207,7 +207,19 @@ app.get('*', strictLimiter, async (req, res) => {
       }
     }
     
-    await handleGenerate(req, res, cleanPath, generatorXHandle);
+    // Extract advanced options from query parameters
+    const advancedOptions = {};
+    if (req.query.style && req.query.style.trim()) {
+      advancedOptions.style = req.query.style.trim().slice(0, 200); // Limit length
+    }
+    if (req.query.content && req.query.content.trim()) {
+      advancedOptions.content = req.query.content.trim().slice(0, 200); // Limit length
+    }
+    if (req.query.topic && req.query.topic.trim()) {
+      advancedOptions.topic = req.query.topic.trim().slice(0, 200); // Limit length
+    }
+    
+    await handleGenerate(req, res, cleanPath, generatorXHandle, advancedOptions);
   } catch (error) {
     console.error('Server error:', error);
     res.status(500).send('Internal server error');

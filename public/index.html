@@ -197,6 +197,82 @@
             border-bottom-color: #000;
         }
 
+        /* Advanced Options Styles */
+        .advanced-toggle {
+            margin-top: 1rem;
+            text-align: center;
+        }
+
+        .advanced-link {
+            background: none;
+            border: none;
+            color: #666;
+            font-size: 0.9rem;
+            font-family: inherit;
+            cursor: pointer;
+            text-decoration: none;
+            padding: 0.5rem;
+            transition: color 0.3s ease;
+            font-weight: 400;
+        }
+
+        .advanced-link:hover {
+            color: #000;
+        }
+
+        .advanced-panel {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease, padding 0.3s ease;
+            margin-top: 0;
+        }
+
+        .advanced-panel.expanded {
+            max-height: 300px;
+            padding-top: 1.5rem;
+        }
+
+        .advanced-content {
+            max-width: 400px;
+            margin: 0 auto;
+        }
+
+        .advanced-field {
+            margin-bottom: 1rem;
+            text-align: left;
+        }
+
+        .advanced-field label {
+            display: block;
+            font-size: 0.9rem;
+            font-weight: 500;
+            color: #333;
+            margin-bottom: 0.3rem;
+        }
+
+        .advanced-input {
+            width: 100%;
+            padding: 0.75rem 1rem;
+            font-size: 0.9rem;
+            border: 1px solid #ddd;
+            background: #fafafa;
+            font-family: inherit;
+            font-weight: 400;
+            transition: all 0.3s ease;
+            outline: none;
+        }
+
+        .advanced-input:focus {
+            border-color: #666;
+            background: #fff;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+        }
+
+        .advanced-input::placeholder {
+            color: #999;
+            font-style: italic;
+        }
+
         /* Removed animations */
 
 
@@ -317,6 +393,51 @@
                         autocomplete="off"
                     />
                 </div>
+                
+                <!-- Advanced Options Toggle -->
+                <div class="advanced-toggle">
+                    <button id="advancedToggle" class="advanced-link">
+                        Show advanced options ▾
+                    </button>
+                </div>
+                
+                <!-- Advanced Options Panel -->
+                <div id="advancedPanel" class="advanced-panel">
+                    <div class="advanced-content">
+                        <div class="advanced-field">
+                            <label for="styleInput">Style:</label>
+                            <input 
+                                type="text" 
+                                id="styleInput"
+                                class="advanced-input"
+                                placeholder="e.g., modern minimalist, retro gaming, corporate professional"
+                                autocomplete="off"
+                            />
+                        </div>
+                        
+                        <div class="advanced-field">
+                            <label for="contentInput">Content:</label>
+                            <input 
+                                type="text" 
+                                id="contentInput"
+                                class="advanced-input"
+                                placeholder="e.g., product showcase, blog articles, service descriptions"
+                                autocomplete="off"
+                            />
+                        </div>
+                        
+                        <div class="advanced-field">
+                            <label for="topicInput">Topic/About:</label>
+                            <input 
+                                type="text" 
+                                id="topicInput"
+                                class="advanced-input"
+                                placeholder="e.g., tech startup, food blog, creative agency"
+                                autocomplete="off"
+                            />
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
         
@@ -334,11 +455,39 @@
     <script>
         // Handle input interactions
         const input = document.getElementById('pathInput');
+        const advancedToggle = document.getElementById('advancedToggle');
+        const advancedPanel = document.getElementById('advancedPanel');
+        const styleInput = document.getElementById('styleInput');
+        const contentInput = document.getElementById('contentInput');
+        const topicInput = document.getElementById('topicInput');
+        
+        // Advanced options toggle
+        advancedToggle.addEventListener('click', function(e) {
+            e.preventDefault();
+            const isExpanded = advancedPanel.classList.contains('expanded');
+            
+            if (isExpanded) {
+                advancedPanel.classList.remove('expanded');
+                advancedToggle.textContent = 'Show advanced options ▾';
+            } else {
+                advancedPanel.classList.add('expanded');
+                advancedToggle.textContent = 'Hide advanced options ▴';
+            }
+        });
         
         input.addEventListener('keypress', function(e) {
             if (e.key === 'Enter') {
                 navigateToPath();
             }
+        });
+        
+        // Allow Enter key in advanced inputs too
+        [styleInput, contentInput, topicInput].forEach(advInput => {
+            advInput.addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    navigateToPath();
+                }
+            });
         });
         
         input.addEventListener('input', function(e) {
@@ -360,15 +509,36 @@
                     .replace(/^-|-$/g, '');
                 
                 if (cleanPath) {
+                    // Collect advanced options
+                    const advancedOptions = {
+                        style: styleInput.value.trim(),
+                        content: contentInput.value.trim(),
+                        topic: topicInput.value.trim()
+                    };
+                    
                     // Track website generation attempt
                     if (typeof umami !== 'undefined') {
                         umami.track('generate-website', {
                             path: cleanPath,
                             inputLength: cleanPath.length,
+                            hasAdvancedOptions: !!(advancedOptions.style || advancedOptions.content || advancedOptions.topic),
                             timestamp: new Date().toISOString()
                         });
                     }
-                    window.location.href = '/' + cleanPath;
+                    
+                    // Build URL with advanced options as query parameters
+                    let url = '/' + cleanPath;
+                    const params = new URLSearchParams();
+                    
+                    if (advancedOptions.style) params.set('style', advancedOptions.style);
+                    if (advancedOptions.content) params.set('content', advancedOptions.content);
+                    if (advancedOptions.topic) params.set('topic', advancedOptions.topic);
+                    
+                    if (params.toString()) {
+                        url += '?' + params.toString();
+                    }
+                    
+                    window.location.href = url;
                 }
             }
         }
