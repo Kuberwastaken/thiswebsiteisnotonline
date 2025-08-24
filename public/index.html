@@ -41,6 +41,9 @@
     
     <meta name="theme-color" content="#000000">
     <link rel="canonical" href="https://thiswebsiteisnot.online/">
+    
+    <!-- Umami Analytics -->
+    <script defer src="https://cloud.umami.is/script.js" data-website-id="10096734-4b52-416d-9462-bba1d0c82206"></script>
     <style>
         @import url('https://rsms.me/inter/inter.css');
         
@@ -273,6 +276,14 @@
                     .replace(/^-|-$/g, '');
                 
                 if (cleanPath) {
+                    // Track website generation attempt
+                    if (typeof umami !== 'undefined') {
+                        umami.track('generate-website', {
+                            path: cleanPath,
+                            inputLength: cleanPath.length,
+                            timestamp: new Date().toISOString()
+                        });
+                    }
                     window.location.href = '/' + cleanPath;
                 }
             }
