@@ -5,6 +5,7 @@ const cors = require('cors');
 const helmet = require('helmet');
 const path = require('path');
 const crypto = require('crypto');
+const { createClient } = require('@supabase/supabase-js');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -21,6 +22,23 @@ app.use(express.static('public'));
 const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
 const ANTHROPIC_API_URL = 'https://api.anthropic.com/v1/messages';
 
+// Supabase configuration
+const supabaseUrl = process.env.SUPABASE_URL;
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_KEY;
+
+let supabase = null;
+if (supabaseUrl && supabaseServiceKey) {
+  supabase = createClient(supabaseUrl, supabaseServiceKey, {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false
+    }
+  });
+  console.log('✅ Supabase client initialized');
+} else {
+  console.log('⚠️ Supabase not configured - using in-memory cache only');
+}
+
 // Simple in-memory cache with TTL
 const cache = new Map();
 const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
@@ -28,112 +46,281 @@ const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 // Validate required environment variables
 if (!ANTHROPIC_API_KEY) {
   console.error('❌ Error: ANTHROPIC_API_KEY environment variable is required');
-  console.error('Please create a .env file with your Anthropic API key');
+  console.error('Please create a .env.local file with your Anthropic API key');
   process.exit(1);
 }
 
-// Generate a seed based on path and current hour for controlled randomness
-function generateSeed(path) {
-  const hour = new Date().getHours();
-  const day = new Date().getDate();
-  return crypto.createHash('md5').update(`${path}-${day}-${hour}`).digest('hex').substring(0, 8);
+// Helper functions for Supabase integration
+function extractTitle(html) {
+  const titleMatch = html.match(/<title[^>]*>([^<]+)<\/title>/i);
+  return titleMatch ? titleMatch[1].trim() : 'Generated Website';
 }
 
-// Specific website approaches that encourage creativity
-const websiteTypes = [
-  'cult-following product', 'underground movement', 'exclusive membership club', 'secret society',
-  'boutique consultancy', 'specialized research lab', 'artisan workshop', 'niche community hub',
-  'experimental platform', 'passion project', 'indie creator space', 'hyper-specific service',
-  'micro-business empire', 'obsessive collector site', 'expertise showcase', 'unique methodology',
-  'revolutionary concept', 'counterculture platform', 'specialized marketplace', 'authentic craft business'
-];
-
-const colorSchemes = [
-  'monochrome with neon accent', 'warm earth tones', 'cool industrial blues', 'vintage sepia',
-  'bold primary colors', 'pastel minimalism', 'dark mode elegance', 'retro 80s palette',
-  'forest and nature greens', 'desert sunset oranges', 'deep ocean blues', 'cosmic purples'
-];
-
-const designStyles = [
-  'ultra-minimalist', 'brutalist modern', 'hand-crafted organic', 'tech startup clean',
-  'vintage newspaper', 'sci-fi terminal', 'artisan handmade', 'corporate professional',
-  'underground zine', 'luxury boutique', 'academic research', 'maker workshop'
-];
-
-function getRandomElement(array, seed) {
-  const index = parseInt(seed, 16) % array.length;
-  return array[index];
-}
-
-// Enhanced prompt generation
-function generatePrompt(path, seed) {
-  const websiteType = getRandomElement(websiteTypes, seed);
-  const colorScheme = getRandomElement(colorSchemes, seed.substring(0, 4));
-  const designStyle = getRandomElement(designStyles, seed.substring(4, 8));
+function extractDescription(html) {
+  // Try to extract from meta description first
+  const metaDescMatch = html.match(/<meta[^>]*name=["\']description["\'][^>]*content=["\']([^"']+)["\'][^>]*>/i);
+  if (metaDescMatch) return metaDescMatch[1].trim();
   
-  return `Create a complete HTML page for "${path}". Be creative and specific - don't make generic websites!
+  // Fallback: extract first text content
+  const bodyMatch = html.match(/<body[^>]*>([\s\S]*?)<\/body>/i);
+  if (bodyMatch) {
+    const textContent = bodyMatch[1]
+      .replace(/<[^>]+>/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+    return textContent.substring(0, 160) + (textContent.length > 160 ? '...' : '');
+  }
+  
+  return 'A unique AI-generated website';
+}
 
-🎯 CREATIVE INTERPRETATION:
-- Transform "${path}" into something unexpected and specific
-- If it's a common word, give it a unique twist (e.g., "coffee" → interdimensional coffee trading post)
-- Create a distinct personality and purpose for this exact concept
-- Avoid generic templates - make it feel like a real, established business
+// Function to update footer with current stats
+function updateFooterWithStats(html, generatedAt, viewCount) {
+  const formatDate = (dateString) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', { 
+      year: 'numeric', 
+      month: 'short', 
+      day: 'numeric' 
+    });
+  };
 
-🎨 DESIGN: ${designStyle} style with ${colorScheme} colors
-- Use bold, distinctive visual elements
-- Create engaging micro-interactions
-- Focus on one main feature/purpose
-- Make it memorable and unique
+  // Remove existing footer if present
+  const footerRegex = /<!-- Creator Attribution -->[\s\S]*?<\/div>/;
+  html = html.replace(footerRegex, '');
 
-⚡ CORE FUNCTIONALITY:
-- ONE main interactive feature that works
-- Simple, focused user interface  
-- Clear value proposition
-- Real-looking content (not Lorem ipsum)
+  // Add updated footer
+  const footerHTML = `
+    <!-- Creator Attribution -->
+    <div style="
+      position: fixed; 
+      bottom: 10px; 
+      right: 10px; 
+      background: rgba(0,0,0,0.85); 
+      color: white; 
+      padding: 10px 14px; 
+      border-radius: 8px; 
+      font-size: 11px; 
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      z-index: 9999;
+      text-decoration: none;
+      box-shadow: 0 3px 15px rgba(0,0,0,0.3);
+      transition: all 0.3s ease;
+      line-height: 1.3;
+      min-width: 160px;
+    " 
+    onmouseover="this.style.background='rgba(0,0,0,0.95)'; this.style.transform='translateY(-2px)'"
+    onmouseout="this.style.background='rgba(0,0,0,0.85)'; this.style.transform='translateY(0)'"
+    onclick="window.open('https://kuber.studio', '_blank')">
+      <div style="margin-bottom: 4px; font-weight: 600;">📅 Generated: ${formatDate(generatedAt)}</div>
+      <div style="opacity: 0.8; font-size: 10px;">Visited: ${viewCount} time${viewCount !== 1 ? 's' : ''}</div>
+    </div>`;
 
-🚫 STRICT RULES:
-- NO IMAGES AT ALL (not even CSS background-images or data URIs)
-- NO references to images, photos, or visual media
-- NO <img> tags, background-image, or image-related CSS
-- Use only: text, colors, CSS shapes, borders, gradients, emojis, Unicode symbols
-- Maximum 1800 characters total
-- Only return HTML - no explanations
+  // Insert before closing body tag
+  if (html.includes('</body>')) {
+    html = html.replace('</body>', footerHTML + '\n</body>');
+  } else {
+    html += footerHTML;
+  }
 
-💡 INSTEAD OF IMAGES USE:
-- CSS shapes (border-radius, clip-path)
-- Gradient backgrounds
-- Unicode symbols (★ ◆ ▲ ● ☆ ◉ ◯)
-- Emojis for visual interest
-- Creative typography
-- Box shadows and borders
+  return html;
+}
 
-Make it feel authentic and purposeful - like someone actually built this specific thing for "${path}". Seed: ${seed}`;
+// Function to get specific styling instructions for each theme
+function getThemeInstructions(theme) {
+  const themeMap = {
+    'old-school-90s-internet': 'Use basic HTML styling with Times New Roman font, simple borders, basic colors (blue links, black text), table-based layouts, and minimal CSS - make it look like a 1995 website',
+    'dark-noir-detective': 'Use dark backgrounds (#1a1a1a, #2d2d2d), white/gray text, high contrast, minimal colors, sharp edges, and film noir atmosphere with shadows',
+    'bright-clean-minimal': 'Use lots of white space, simple sans-serif fonts, minimal colors (black, white, one accent), clean lines, and modern minimalist design',
+    'retro-neon-80s': 'Use bright neon colors (pink, cyan, purple), dark backgrounds, glowing effects, retro fonts, and 80s synthwave aesthetics',
+    'newspaper-print-classic': 'Use serif fonts, column layouts, black and white with minimal color, traditional typography, and classic newspaper design',
+    'terminal-green-hacker': 'Use monospace fonts, green text on black background, ASCII art, command-line aesthetics, and hacker terminal styling',
+    'warm-wooden-cabin': 'Use warm browns, oranges, cream colors, natural textures (via CSS), cozy feeling, and rustic design elements',
+    'cold-steel-industrial': 'Use grays, blues, metallic colors, sharp geometric shapes, industrial feeling, and modern factory aesthetics',
+    'art-deco-golden': 'Use gold, black, cream colors, geometric patterns, elegant fonts, and 1920s Art Deco styling',
+    'brutalist-concrete': 'Use raw, unfinished styling, gray colors, harsh edges, bold typography, and concrete brutalist architecture inspiration',
+    'pastel-soft-dreamy': 'Use soft pastel colors (pink, lavender, mint), gentle gradients, rounded corners, and dreamy, soft aesthetics',
+    'bold-high-contrast': 'Use stark black and white with one bold accent color, high contrast, bold typography, and striking visual impact',
+    'vintage-typewriter': 'Use monospace fonts, cream/beige backgrounds, black text, paper-like styling, and old typewriter aesthetics',
+    'modern-glass-clean': 'Use translucent effects, subtle shadows, clean lines, glass-morphism styling, and modern transparent design',
+    'forest-natural-green': 'Use various shades of green, brown, earth tones, natural feeling, and organic forest-inspired design',
+    'sunset-orange-warm': 'Use warm oranges, reds, yellows, gradient sunsets, warm feeling, and golden hour color palettes',
+    'ocean-deep-blue': 'Use various blues, teals, navy, wave-like patterns, ocean depth feeling, and aquatic design elements',
+    'desert-sandy-earth': 'Use sandy beiges, browns, earth tones, warm desert colors, and natural desert landscape inspiration',
+    'library-quiet-brown': 'Use warm browns, cream, burgundy, classic book colors, quiet scholarly feeling, and traditional library aesthetics',
+    'festival-rainbow-bright': 'Use bright, vibrant rainbow colors, celebration feeling, energetic design, and festive party aesthetics',
+    'cyberpunk-neon-grid': 'Use neon colors, dark backgrounds, grid patterns, futuristic styling, and cyberpunk movie aesthetics',
+    'steampunk-brass': 'Use brass, copper, brown colors, vintage industrial styling, gears and mechanical elements (via CSS), Victorian era inspiration',
+    'space-dark-stars': 'Use deep space colors (dark blue, purple, black), star-like elements, cosmic feeling, and space exploration themes',
+    'garden-floral-soft': 'Use soft greens, pinks, florals colors, gentle natural styling, garden-inspired design, and blooming flower aesthetics'
+  };
+  
+  return themeMap[theme] || 'Use creative styling that matches the website concept';
+}
+
+// Enhanced prompt generation with true randomness
+function generatePrompt(path) {
+  // Diverse visual themes for maximum variety
+  const visualThemes = [
+    'old-school-90s-internet', 'dark-noir-detective', 'bright-clean-minimal', 'retro-neon-80s',
+    'newspaper-print-classic', 'terminal-green-hacker', 'warm-wooden-cabin', 'cold-steel-industrial',
+    'art-deco-golden', 'brutalist-concrete', 'pastel-soft-dreamy', 'bold-high-contrast',
+    'vintage-typewriter', 'modern-glass-clean', 'forest-natural-green', 'sunset-orange-warm',
+    'ocean-deep-blue', 'desert-sandy-earth', 'library-quiet-brown', 'festival-rainbow-bright',
+    'cyberpunk-neon-grid', 'steampunk-brass', 'space-dark-stars', 'garden-floral-soft'
+  ];
+  
+  const contentTypes = [
+    'comprehensive-business', 'detailed-service-catalog', 'information-encyclopedia', 'community-hub',
+    'educational-resource', 'marketplace-directory', 'professional-portfolio', 'hobby-showcase',
+    'local-guide', 'specialized-tool', 'entertainment-portal', 'research-database'
+  ];
+  
+  const layoutApproaches = [
+    'multi-column-magazine', 'dashboard-panels', 'timeline-scrolling', 'grid-card-system',
+    'sidebar-navigation', 'tabbed-sections', 'accordion-expandable', 'single-page-scroll',
+    'split-screen-dual', 'masonry-pinterest', 'table-data-driven', 'forum-discussion'
+  ];
+  
+  const randomTheme = visualThemes[Math.floor(Math.random() * visualThemes.length)];
+  const randomContent = contentTypes[Math.floor(Math.random() * contentTypes.length)];
+  const randomLayout = layoutApproaches[Math.floor(Math.random() * layoutApproaches.length)];
+  
+  // Get specific styling based on theme
+  const themeStyles = getThemeInstructions(randomTheme);
+  
+  return `Create a comprehensive, content-rich HTML website for "${path}". Make it a ${randomContent} with ${randomTheme} visual styling using ${randomLayout} layout.
+
+🎯 CONTENT REQUIREMENTS - MAKE IT LARGE:
+- Create a SUBSTANTIAL website with 6-8 distinct sections minimum
+- Each section should have 3-5 paragraphs of detailed, realistic content
+- Include: Hero/Welcome, About, Services/Products, Features, Testimonials/Reviews, FAQ, Contact, and additional relevant sections
+- Add specific details, pricing, testimonials, feature lists, contact info, business hours, etc.
+- Make it feel like an established business with years of content and history
+- Include realistic data: phone numbers, addresses, specific services, prices, etc.
+
+🎨 VISUAL THEME - ${randomTheme}:
+${themeStyles}
+
+📐 LAYOUT & STRUCTURE:
+- Use ${randomLayout} approach for content organization
+- Create proper navigation with 6+ menu items
+- Include a substantial hero section, multiple content sections, and detailed footer
+- Make each section visually distinct but maintain visual cohesion
+- Add plenty of content - aim for a full, realistic business website
+
+⚡ INTERACTIVE FEATURES:
+- Add smooth hover effects, transitions, and animations
+- Include functional-looking buttons, forms, and navigation
+- Create engaging micro-interactions throughout
+- All links should point to realistic sub-pages or related sites
+
+🚫 TECHNICAL CONSTRAINTS:
+- NO IMAGES (no <img>, background-image, or any image references)
+- Use CSS shapes, gradients, borders, emojis, Unicode symbols for all visuals
+- Only return HTML - no explanations or markdown
+- Make it content-heavy and comprehensive (aim for 4000+ characters of actual content)
+- All content must be unique, realistic, and specific to the path name
+
+Make it feel like a real, established website that's been online for years with tons of content and regular updates!`;
+}
+
+// Post-processing function to clean AI-generated content
+function postProcessContent(content) {
+  console.log('Raw AI content before processing:', content.substring(0, 200) + '...');
+  
+  // Remove the unwanted preamble text that sometimes appears
+  const unwantedPatterns = [
+    /^Here is the complete HTML code for a website based on the URL path "[^"]*":\s*/i,
+    /^Here is the HTML code for a complete, unique website based on the URL path "[^"]*":\s*/i,
+    /^Here is the complete HTML code for the website based on the URL path "[^"]*":\s*/i,
+    /^Here is the complete HTML code for the website:\s*/i,
+    /^Here is a complete HTML page for "[^"]*":\s*/i,
+    /^Here's the complete HTML code for "[^"]*":\s*/i,
+    /^Here's a complete HTML page for "[^"]*":\s*/i,
+    /^Here's the HTML code for "[^"]*":\s*/i,
+    /^Here is the HTML code for "[^"]*":\s*/i
+  ];
+  
+  let cleanedContent = content;
+  
+  // Remove unwanted preamble text
+  for (const pattern of unwantedPatterns) {
+    if (pattern.test(cleanedContent)) {
+      console.log('Found and removing unwanted preamble text');
+      cleanedContent = cleanedContent.replace(pattern, '');
+      break;
+    }
+  }
+  
+  // Replace all instances of 2023 with 2025
+  const yearMatches = cleanedContent.match(/2023/g);
+  if (yearMatches) {
+    console.log(`Replacing ${yearMatches.length} instances of 2023 with 2025`);
+    cleanedContent = cleanedContent.replace(/2023/g, '2025');
+  }
+  
+  // Trim any extra whitespace
+  cleanedContent = cleanedContent.trim();
+  
+  console.log('Content after processing:', cleanedContent.substring(0, 200) + '...');
+  
+  return cleanedContent;
 }
 
 // Function to generate website content using Claude
 async function generateWebsiteContent(path) {
-  const seed = generateSeed(path);
-  const cacheKey = `${path}-${seed}`;
-  
-  // Check cache first
+  // If Supabase is configured, check if website already exists
+  if (supabase) {
+    try {
+      const { data: existing, error: fetchError } = await supabase
+        .from('websites')
+        .select('html, title, created_at, view_count')
+        .eq('path', path)
+        .single();
+      
+      if (existing && !fetchError) {
+        // Increment view count
+        await supabase
+          .from('websites')
+          .update({ 
+            view_count: existing.view_count + 1,
+            last_viewed: new Date().toISOString()
+          })
+          .eq('path', path);
+        
+        console.log(`📊 Serving existing website: /${path} (${existing.view_count + 1} views)`);
+        
+        // Update the footer with current view count
+        const updatedHtml = updateFooterWithStats(existing.html, existing.created_at, existing.view_count + 1);
+        return updatedHtml;
+      }
+    } catch (error) {
+      console.error('Supabase fetch error:', error);
+      // Continue to generate new content
+    }
+  }
+
+  // Check in-memory cache
+  const cacheKey = `${path}`;
   if (cache.has(cacheKey)) {
     const cached = cache.get(cacheKey);
     if (Date.now() - cached.timestamp < CACHE_TTL) {
-      console.log(`Cache hit for: /${path}`);
+      console.log(`💾 Cache hit for: /${path}`);
       return cached.content;
     }
     cache.delete(cacheKey);
   }
 
-  const prompt = generatePrompt(path, seed);
+  const prompt = generatePrompt(path);
 
   try {
-    console.log(`Generating ${getRandomElement(designStyles, seed)} website for: /${path}`);
+    console.log(`🤖 Generating new website for: /${path}`);
     
     const response = await axios.post(ANTHROPIC_API_URL, {
-      model: 'claude-3-haiku-20240307', // Back to Haiku for cost efficiency
-      max_tokens: 2000,
-      temperature: 0.8,
+      model: 'claude-3-5-haiku-20241022',
+      max_tokens: 2500,
+      temperature: 0.9,
       messages: [
         {
           role: 'user',
@@ -148,9 +335,41 @@ async function generateWebsiteContent(path) {
       }
     });
 
-    const content = response.data.content[0].text;
+    let content = response.data.content[0].text;
     
-    // Cache the result
+    // Apply post-processing to clean the content
+    content = postProcessContent(content);
+    
+    // Save to Supabase if configured
+    if (supabase) {
+      try {
+        const title = extractTitle(content);
+        const description = extractDescription(content);
+        const generatedAt = new Date().toISOString();
+        
+        const { error: insertError } = await supabase
+          .from('websites')
+          .insert({
+            path,
+            html: content,
+            title,
+            description,
+            view_count: 1,
+            created_at: generatedAt,
+            last_viewed: generatedAt
+          });
+        
+        if (insertError) {
+          console.error('💥 Supabase insert error:', insertError);
+        } else {
+          console.log(`💾 Saved new website to Supabase: /${path}`);
+        }
+      } catch (error) {
+        console.error('💥 Supabase save error:', error);
+      }
+    }
+    
+    // Cache the result in memory as backup
     cache.set(cacheKey, {
       content,
       timestamp: Date.now()
@@ -356,6 +575,50 @@ app.get('/', (req, res) => {
 </html>`;
 
   res.send(homePage);
+});
+
+// Dynamic robots.txt
+app.get('/robots.txt', async (req, res) => {
+  let robotsContent = `User-agent: *
+Allow: /
+
+# Allow crawling of generated pages
+`;
+
+  // Add sample generated pages if Supabase is available
+  if (supabase) {
+    try {
+      const { data: websites } = await supabase
+        .from('websites')
+        .select('path')
+        .order('created_at', { ascending: false })
+        .limit(100);
+      
+      if (websites && websites.length > 0) {
+        websites.forEach(site => {
+          robotsContent += `Allow: /${site.path}\n`;
+        });
+      }
+    } catch (error) {
+      console.error('Error fetching websites for robots.txt:', error);
+    }
+  }
+
+  robotsContent += `
+# Block admin and utility endpoints
+Disallow: /admin/
+Disallow: /_next/
+Disallow: /health
+
+# Sitemap
+Sitemap: https://thiswebsiteisnot.online/sitemap.xml
+
+# Professional website directory
+`;
+
+  res.setHeader('Content-Type', 'text/plain');
+  res.setHeader('Cache-Control', 'public, max-age=3600');
+  res.send(robotsContent);
 });
 
 // Health check with more info

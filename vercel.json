@@ -1,0 +1,25 @@
+{
+  "functions": {
+    "api/generate.js": {
+      "maxDuration": 30
+    }
+  },
+  "rewrites": [
+    {
+      "source": "/robots.txt",
+      "destination": "/api/robots"
+    },
+    {
+      "source": "/sitemap.xml", 
+      "destination": "/api/sitemap"
+    },
+    {
+      "source": "/stats",
+      "destination": "/api/stats"
+    },
+    {
+      "source": "/((?!api|_next|favicon.ico|health|admin).*)",
+      "destination": "/api/generate?path=$1"
+    }
+  ]
+}
