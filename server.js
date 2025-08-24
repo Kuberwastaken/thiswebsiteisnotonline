@@ -17,7 +17,13 @@ const { startCacheCleanup, getCacheStats, clearCache } = require('./lib/database
 
 // Security and CORS middleware
 app.use(helmet({
-  contentSecurityPolicy: false // Allow inline styles and scripts for AI-generated content
+  contentSecurityPolicy: false, // Allow inline styles and scripts for AI-generated content
+  crossOriginEmbedderPolicy: false, // Allow embeds and external content
+  hsts: {
+    maxAge: 31536000,
+    includeSubDomains: true,
+    preload: true
+  }
 }));
 app.use(cors());
 app.use(express.json());
@@ -45,6 +51,16 @@ const strictLimiter = rateLimit({
   },
   standardHeaders: true,
   legacyHeaders: false,
+  // Skip rate limiting for search engine crawlers
+  skip: (req) => {
+    const userAgent = req.get('User-Agent') || '';
+    const isSearchBot = /googlebot|bingbot|slurp|duckduckbot|baiduspider|yandexbot|facebookexternalhit|twitterbot|rogerbot|linkedinbot|embedly|quora link preview|showyoubot|outbrain|pinterest|slackbot|vkShare|W3C_Validator/i.test(userAgent);
+    if (isSearchBot) {
+      console.log(`🤖 Search bot detected, skipping rate limit: ${userAgent}`);
+      return true;
+    }
+    return false;
+  }
 });
 
 const utilityLimiter = rateLimit({

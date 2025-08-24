@@ -3,7 +3,7 @@
 const { handleGenerate } = require('../lib/generate');
 
 export default async function handler(req, res) {
-  const { path, x } = req.query;
+  const { path, x, style, content, topic } = req.query;
   const urlPath = Array.isArray(path) ? path.join('/') : path || '';
   
   // Validate and sanitize X handle
@@ -13,6 +13,18 @@ export default async function handler(req, res) {
     if (/^[a-z0-9_]{1,15}$/i.test(cleanHandle)) {
       generatorXHandle = cleanHandle;
     }
+  }
+  
+  // Extract advanced options from query parameters
+  const advancedOptions = {};
+  if (style && style.trim()) {
+    advancedOptions.style = style.trim().slice(0, 200); // Limit length
+  }
+  if (content && content.trim()) {
+    advancedOptions.content = content.trim().slice(0, 200); // Limit length
+  }
+  if (topic && topic.trim()) {
+    advancedOptions.topic = topic.trim().slice(0, 200); // Limit length
   }
   
   // Skip common browser requests and admin routes
@@ -41,7 +53,7 @@ export default async function handler(req, res) {
   }
 
   try {
-    await handleGenerate(req, res, cleanPath, generatorXHandle);
+    await handleGenerate(req, res, cleanPath, generatorXHandle, advancedOptions);
   } catch (error) {
     console.error('Server error:', error);
     res.status(500).send('Internal server error');
