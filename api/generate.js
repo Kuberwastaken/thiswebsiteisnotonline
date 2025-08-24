@@ -3,8 +3,17 @@
 const { handleGenerate } = require('../lib/generate');
 
 export default async function handler(req, res) {
-  const { path } = req.query;
+  const { path, x } = req.query;
   const urlPath = Array.isArray(path) ? path.join('/') : path || '';
+  
+  // Validate and sanitize X handle
+  let generatorXHandle = null;
+  if (x) {
+    const cleanHandle = x.replace(/^@/, '').toLowerCase().trim();
+    if (/^[a-z0-9_]{1,15}$/i.test(cleanHandle)) {
+      generatorXHandle = cleanHandle;
+    }
+  }
   
   // Skip common browser requests and admin routes
   if (urlPath.includes('.') || 
@@ -32,7 +41,7 @@ export default async function handler(req, res) {
   }
 
   try {
-    await handleGenerate(req, res, cleanPath);
+    await handleGenerate(req, res, cleanPath, generatorXHandle);
   } catch (error) {
     console.error('Server error:', error);
     res.status(500).send('Internal server error');
