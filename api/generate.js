@@ -1,10 +1,8 @@
 // Vercel API route for dynamic website generation
-// This handles all catch-all routes like /anything
 
 const { handleGenerate } = require('../lib/generate');
 
 export default async function handler(req, res) {
-  // Get the path from the URL
   const { path } = req.query;
   const urlPath = Array.isArray(path) ? path.join('/') : path || '';
   
@@ -23,7 +21,7 @@ export default async function handler(req, res) {
     return res.status(400).send('Path too long');
   }
 
-  // Sanitize path
+  // Sanitize path (same logic as server.js)
   const cleanPath = urlPath.toLowerCase()
     .replace(/[^a-z0-9-]/g, '-')
     .replace(/-+/g, '-')

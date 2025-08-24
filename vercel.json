@@ -1,6 +1,6 @@
 {
   "functions": {
-    "api/[...path].js": {
+    "api/generate.js": {
       "maxDuration": 30
     }
   },
@@ -18,8 +18,12 @@
       "destination": "/api/stats"
     },
     {
-      "source": "/((?!api|_next|favicon.ico).*)",
-      "destination": "/api/$1"
+      "source": "/api/stats",
+      "destination": "/api/stats"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/api/generate?path=$1"
     }
   ]
 }
