@@ -4,12 +4,12 @@ An infinite website generator powered by AI - every URL path generates a complet
 
 ## 🎯 Concept
 
-Visit `thiswebsiteisnot.online/anything` and watch as Claude AI generates a completely unique website based on your URL path. Every refresh creates new content - no two visits are ever the same!
+Visit `thiswebsiteisnot.online/anything` and watch as GPT-OSS AI generates a completely unique website based on your URL path. Every refresh creates new content - no two visits are ever the same!
 
 ## 🚀 Features
 
 - **Infinite Content**: Every URL path generates a unique website
-- **AI-Powered**: Uses Anthropic's Claude Haiku 3.5 for content generation
+- **AI-Powered**: Uses OpenRouter's GPT-OSS 20B model for content generation
 - **Dynamic Generation**: Fresh content on every visit
 - **Modern Design**: Beautiful, responsive UI with animations
 - **Zero Database**: No storage needed - everything is generated live
@@ -18,7 +18,7 @@ Visit `thiswebsiteisnot.online/anything` and watch as Claude AI generates a comp
 ## 🛠️ Technical Stack
 
 - **Backend**: Node.js + Express.js
-- **AI**: Anthropic Claude Haiku 3.5 API
+- **AI**: OpenRouter GPT-OSS 20B API
 - **Frontend**: Vanilla HTML/CSS/JavaScript
 - **Deployment**: Ready for any Node.js hosting platform
 
@@ -33,7 +33,7 @@ Visit `thiswebsiteisnot.online/anything` and watch as Claude AI generates a comp
    ```bash
    # Copy the example environment file and add your API key
    cp env.example .env
-   # Edit .env file with your actual Anthropic API key
+   # Edit .env file with your actual OpenRouter API key
    ```
 4. Start the server:
    ```bash
@@ -49,7 +49,9 @@ Visit `thiswebsiteisnot.online/anything` and watch as Claude AI generates a comp
 Create a `.env` file in the root directory with the following variables:
 
 ```env
-ANTHROPIC_API_KEY=your-anthropic-api-key-here
+OPENROUTER_API_KEY=your-openrouter-api-key-here
+SITE_URL=https://yoursite.com
+SITE_NAME=Your Site Name
 PORT=3000
 NODE_ENV=development
 ```
@@ -60,7 +62,7 @@ NODE_ENV=development
 
 1. User visits `thiswebsiteisnot.online/[anything]`
 2. Express server catches the URL path with a wildcard route
-3. The path is sent to Claude AI with a creative prompt
+3. The path is sent to GPT-OSS AI with a creative prompt
 4. AI generates complete HTML with styling and interactivity
 5. Server returns the generated HTML to the user
 6. Every refresh generates completely new content!
@@ -84,7 +86,7 @@ This app is ready to deploy on platforms like:
 - DigitalOcean App Platform
 - Any Node.js hosting service
 
-Remember to set your `ANTHROPIC_API_KEY` environment variable in production!
+Remember to set your `OPENROUTER_API_KEY` environment variable in production!
 
 ## 👨‍💻 Creator
 
