@@ -58,12 +58,12 @@ const utilityLimiter = rateLimit({
   legacyHeaders: false,
 });
 
-// Apply general rate limiting to all routes
-app.use(generalLimiter);
-
-// SEO Routes - No rate limiting for search engine crawlers
+// SEO Routes - No rate limiting at all for search engine crawlers
 app.get('/robots.txt', handleRobots);
 app.get('/sitemap.xml', handleSitemap);
+
+// Apply general rate limiting to all other routes
+app.use(generalLimiter);
 
 // API Routes with appropriate rate limiting
 app.get('/api/stats', utilityLimiter, handleStats);
