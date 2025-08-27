@@ -123,10 +123,13 @@
             position: relative;
             max-width: 400px;
             margin: 0 auto;
+            display: flex;
+            gap: 0.75rem;
+            align-items: center;
         }
 
         .url-input {
-            width: 100%;
+            flex: 1;
             padding: 1rem 1.5rem;
             font-size: 1.1rem;
             border: 2px solid #000;
@@ -136,6 +139,32 @@
             letter-spacing: 0.005em;
             transition: all 0.3s ease;
             outline: none;
+        }
+
+        .generate-btn {
+            padding: 1rem 1.5rem;
+            font-size: 1.1rem;
+            border: 2px solid #000;
+            background: #000;
+            color: #fff;
+            font-family: inherit;
+            font-weight: 600;
+            letter-spacing: 0.005em;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            outline: none;
+            white-space: nowrap;
+        }
+
+        .generate-btn:hover {
+            background: transparent;
+            color: #000;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
+        }
+
+        .generate-btn:active {
+            transform: translateY(0);
         }
 
         .url-input:focus {
@@ -331,6 +360,21 @@
                 margin-bottom: 2rem;
             }
             
+            .input-container {
+                flex-direction: column;
+                gap: 1rem;
+                max-width: none;
+            }
+            
+            .url-input {
+                width: 100%;
+            }
+            
+            .generate-btn {
+                width: 100%;
+                justify-self: stretch;
+            }
+            
             .url-display {
                 margin-bottom: 1.5rem;
             }
@@ -392,6 +436,7 @@
                         id="pathInput"
                         autocomplete="off"
                     />
+                    <button class="generate-btn" id="generateBtn">Generate</button>
                 </div>
                 
                 <!-- Advanced Options Toggle -->
@@ -455,11 +500,18 @@
     <script>
         // Handle input interactions
         const input = document.getElementById('pathInput');
+        const generateBtn = document.getElementById('generateBtn');
         const advancedToggle = document.getElementById('advancedToggle');
         const advancedPanel = document.getElementById('advancedPanel');
         const styleInput = document.getElementById('styleInput');
         const contentInput = document.getElementById('contentInput');
         const topicInput = document.getElementById('topicInput');
+        
+        // Generate button click handler
+        generateBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            navigateToPath();
+        });
         
         // Advanced options toggle
         advancedToggle.addEventListener('click', function(e) {
