@@ -209,16 +209,19 @@ app.get('*', strictLimiter, async (req, res) => {
       }
     }
     
-    // Extract advanced options from query parameters
+    // Extract and validate advanced options from query parameters
     const advancedOptions = {};
-    if (req.query.style && req.query.style.trim()) {
-      advancedOptions.style = req.query.style.trim().slice(0, 200); // Limit length
+    const validParams = ['style', 'content', 'topic'];
+    
+    for (const param of validParams) {
+      if (req.query[param] && typeof req.query[param] === 'string' && req.query[param].trim()) {
+        advancedOptions[param] = req.query[param].trim().slice(0, 200); // Limit length
+      }
     }
-    if (req.query.content && req.query.content.trim()) {
-      advancedOptions.content = req.query.content.trim().slice(0, 200); // Limit length
-    }
-    if (req.query.topic && req.query.topic.trim()) {
-      advancedOptions.topic = req.query.topic.trim().slice(0, 200); // Limit length
+    
+    // Log advanced options usage for debugging
+    if (Object.keys(advancedOptions).length > 0) {
+      console.log(`🎯 Advanced options received for /${cleanPath}:`, advancedOptions);
     }
     
     await handleGenerate(req, res, cleanPath, generatorXHandle, advancedOptions);
