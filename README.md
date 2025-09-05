@@ -88,14 +88,6 @@ This app is ready to deploy on platforms like:
 
 Remember to set your `OPENROUTER_API_KEY` environment variable in production!
 
-## 👨‍💻 Creator
-
-Made with ❤️ by [Kuber Mehta](https://kuber.studio)
-
-## 📄 License
-
-MIT License - feel free to fork and create your own infinite website generator!
-
 ## 🧪 Optional: Run GPT-OSS 20B Locally
 
 You can swap the remote OpenRouter API for a local instance of the smaller `gpt-oss-20b` model. The app will detect env vars and automatically send chat requests to your local OpenAI-compatible server.
@@ -186,3 +178,11 @@ All dynamic generations will use your local model instead of OpenRouter.
 | Slow responses | Reduce `max_tokens` or run with better GPU |
 
 Enjoy hacking locally with full control! 🚀
+
+Made with ❤️ by [Kuber Mehta](https://kuber.studio)
+
+## 📄 License
+
+Apache 2.0 - Check the License file for more details.
+
+
