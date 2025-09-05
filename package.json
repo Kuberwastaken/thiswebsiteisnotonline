@@ -5,7 +5,8 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "dev": "nodemon server.js"
+  "dev": "nodemon server.js",
+  "local:example": "node local-gpt-oss-20b.js"
   },
   "keywords": [
     "ai",

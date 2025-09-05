@@ -9,7 +9,7 @@ Visit `thiswebsiteisnot.online/anything` and watch as GPT-OSS AI generates a com
 ## 🚀 Features
 
 - **Infinite Content**: Every URL path generates a unique website
-- **AI-Powered**: Uses OpenRouter's GPT-OSS 20B model for content generation
+- **AI-Powered**: Uses OpenRouter's GPT-OSS 120B model for content generation
 - **Dynamic Generation**: Fresh content on every visit
 - **Modern Design**: Beautiful, responsive UI with animations
 - **Zero Database**: No storage needed - everything is generated live
@@ -18,7 +18,7 @@ Visit `thiswebsiteisnot.online/anything` and watch as GPT-OSS AI generates a com
 ## 🛠️ Technical Stack
 
 - **Backend**: Node.js + Express.js
-- **AI**: OpenRouter GPT-OSS 20B API
+- **AI**: OpenRouter GPT-OSS 120B API
 - **Frontend**: Vanilla HTML/CSS/JavaScript
 - **Deployment**: Ready for any Node.js hosting platform
 
@@ -95,3 +95,94 @@ Made with ❤️ by [Kuber Mehta](https://kuber.studio)
 ## 📄 License
 
 MIT License - feel free to fork and create your own infinite website generator!
+
+## 🧪 Optional: Run GPT-OSS 20B Locally
+
+You can swap the remote OpenRouter API for a local instance of the smaller `gpt-oss-20b` model. The app will detect env vars and automatically send chat requests to your local OpenAI-compatible server.
+
+### 1. Environment Variables
+
+Add (or edit) the following in your `.env`:
+
+```
+MODEL_PROVIDER=local
+MODEL_API_BASE=http://localhost:8000/v1   # vLLM / Transformers serve default
+MODEL_NAME=openai/gpt-oss-20b            # or gpt-oss:20b for Ollama
+# MODEL_API_KEY=                         # only if your local server enforces auth
+```
+
+Revert to the hosted model any time by removing those or setting:
+
+```
+MODEL_PROVIDER=openrouter
+MODEL_NAME=openai/gpt-oss-120b
+```
+
+### 2. Run with vLLM (Recommended for performance)
+
+Install (example using Python + uv as per model card):
+
+```
+uv pip install --pre vllm==0.10.1+gptoss \
+   --extra-index-url https://wheels.vllm.ai/gpt-oss/ \
+   --extra-index-url https://download.pytorch.org/whl/nightly/cu128 \
+   --index-strategy unsafe-best-match
+
+vllm serve openai/gpt-oss-20b
+```
+
+This exposes an OpenAI-compatible endpoint at `http://localhost:8000/v1`.
+
+### 3. Run with Transformers Serve
+
+```
+pip install -U transformers kernels torch
+transformers serve --model openai/gpt-oss-20b
+```
+
+### 4. Run with Ollama (Consumer Hardware)
+
+```
+ollama pull gpt-oss:20b
+ollama run gpt-oss:20b
+```
+
+Enable (if needed) the OpenAI-compatible endpoint in Ollama and set:
+```
+MODEL_API_BASE=http://localhost:11434/v1
+MODEL_NAME=gpt-oss:20b
+```
+
+### 5. Quick Local Test
+
+After starting your local model and setting env vars:
+
+```
+npm run local:example
+```
+
+This runs `local-gpt-oss-20b.js` which performs a small test chat request.
+
+### 6. Using Local Model in the App
+
+Start the server normally:
+```
+npm run dev
+```
+All dynamic generations will use your local model instead of OpenRouter.
+
+### Notes
+- Local mode uses `MODEL_NAME` if provided, otherwise defaults to `openai/gpt-oss-20b`.
+- If `MODEL_PROVIDER` is anything other than `local`, OpenRouter is used.
+- Rate limit messaging is only shown for OpenRouter responses.
+- Local endpoints must implement the `/v1/chat/completions` OpenAI schema.
+
+### Troubleshooting
+| Symptom | Fix |
+| ------- | --- |
+| ECONNREFUSED | Check that the local server is running and `MODEL_API_BASE` matches its URL |
+| 404 Not Found | Ensure base URL ends with `/v1` if required |
+| Empty output | Inspect local server logs; verify it supports chat completions |
+| Slow responses | Reduce `max_tokens` or run with better GPU |
+
+Enjoy hacking locally with full control! 🚀
